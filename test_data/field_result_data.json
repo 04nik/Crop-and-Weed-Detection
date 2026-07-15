@@ -1,0 +1,88 @@
+{
+    "image_size": [
+        800,
+        600
+    ],
+    "crop_rows": [
+        197,
+        401,
+        597
+    ],
+    "crops_detected": 24,
+    "weeds_detected": 15,
+    "sprayed_area_px": 105280,
+    "total_area_px": 480000,
+    "pesticide_saved_percent": 78.07,
+    "nozzle_triggers": [
+        [
+            {
+                "y_start": 444,
+                "y_end": 496
+            },
+            {
+                "y_start": 392,
+                "y_end": 445
+            },
+            {
+                "y_start": 290,
+                "y_end": 334
+            },
+            {
+                "y_start": 263,
+                "y_end": 316
+            },
+            {
+                "y_start": 37,
+                "y_end": 93
+            }
+        ],
+        [
+            {
+                "y_start": 227,
+                "y_end": 275
+            }
+        ],
+        [
+            {
+                "y_start": 97,
+                "y_end": 146
+            },
+            {
+                "y_start": 74,
+                "y_end": 127
+            },
+            {
+                "y_start": 60,
+                "y_end": 113
+            }
+        ],
+        [
+            {
+                "y_start": 498,
+                "y_end": 549
+            },
+            {
+                "y_start": 281,
+                "y_end": 333
+            },
+            {
+                "y_start": 242,
+                "y_end": 303
+            }
+        ],
+        [
+            {
+                "y_start": 367,
+                "y_end": 421
+            },
+            {
+                "y_start": 289,
+                "y_end": 331
+            },
+            {
+                "y_start": 94,
+                "y_end": 149
+            }
+        ]
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "image_size": [
+        800,
+        600
+    ],
+    "crop_rows": [
+        200,
+        404,
+        600
+    ],
+    "crops_detected": 24,
+    "weeds_detected": 4,
+    "sprayed_area_px": 31680,
+    "total_area_px": 480000,
+    "pesticide_saved_percent": 93.4,
+    "nozzle_triggers": [
+        [
+            {
+                "y_start": 395,
+                "y_end": 447
+            },
+            {
+                "y_start": 101,
+                "y_end": 151
+            }
+        ],
+        [
+            {
+                "y_start": 366,
+                "y_end": 421
+            }
+        ],
+        [],
+        [
+            {
+                "y_start": 5,
+                "y_end": 46
+            }
+        ],
+        []
+    ]
+}
