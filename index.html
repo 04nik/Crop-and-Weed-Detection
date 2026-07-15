@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriSpray AI - Crop & Weed Detection Smart Spraying Dashboard</title>
+    <meta name="description" content="An interactive smart agriculture system that detects crop plants and weed clusters in real time to actuate selective pesticide spraying, saving costs and preventing crop chemical contamination.">
+    <link rel="stylesheet" href="styles.css">
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <header>
+        <div class="logo-section">
+            <div class="logo-icon"><i class="fa-solid fa-leaf"></i></div>
+            <div class="logo-text">
+                <h1>AgriSpray AI</h1>
+                <span>Smart Selective Spraying System</span>
+            </div>
+        </div>
+        <div class="system-status">
+            <div class="status-badge" id="valveStatusBadge">
+                <div class="status-dot"></div>
+                <span id="statusText">System Ready</span>
+            </div>
+            <div class="status-badge">
+                <i class="fa-solid fa-cloud-sun" style="color: #fbbf24;"></i>
+                <span>Field Mode: Day Scan</span>
+            </div>
+            <div class="status-badge">
+                <i class="fa-solid fa-battery-three-quarters" style="color: #10b981;"></i>
+                <span>Boom ECU: 98%</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- LEFT PANEL: Controls -->
+        <aside class="panel" aria-label="System Settings Panel">
+            <h2 class="panel-title"><i class="fa-solid fa-sliders"></i> Control Panel</h2>
+            
+            <div class="card">
+                <div class="card-title">Simulator Mode</div>
+                <div class="tabs">
+                    <div class="tab active" id="tabSim" onclick="switchMode('sim')">Live Simulator</div>
+                    <div class="tab" id="tabUpload" onclick="switchMode('upload')">Static Analyzer</div>
+                    <div class="tab" id="tabPrep" onclick="switchMode('prep')">Dataset Engineer</div>
+                </div>
+            </div>
+
+            <div class="card" id="prepCard" style="display: none;">
+                <div class="card-title">Data Prep Wizard</div>
+                <div class="prep-steps">
+                    <div class="prep-step-btn active" id="prepStep1" onclick="switchPrepStep(1)"><i class="fa-solid fa-broom"></i> 1 & 2. Clean Data</div>
+                    <div class="prep-step-btn" id="prepStep3" onclick="switchPrepStep(3)"><i class="fa-solid fa-minimize"></i> 3. Image Resize</div>
+                    <div class="prep-step-btn" id="prepStep4" onclick="switchPrepStep(4)"><i class="fa-solid fa-copy"></i> 4. Augmentation</div>
+                    <div class="prep-step-btn" id="prepStep5" onclick="switchPrepStep(5)"><i class="fa-solid fa-pen-to-square"></i> 5. Bounding Box</div>
+                </div>
+            </div>
+
+            <div class="card" id="sprayerSettingsCard">
+                <div class="card-title">Sprayer Boom Configuration</div>
+                
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Number of Nozzles</span>
+                        <span class="control-value" id="nozzlesVal">5</span>
+                    </div>
+                    <input type="range" class="slider" id="nozzlesSlider" min="3" max="8" value="5" step="1">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Tractor Speed (km/h)</span>
+                        <span class="control-value" id="speedVal">6.0</span>
+                    </div>
+                    <input type="range" class="slider" id="speedSlider" min="2" max="15" value="6" step="0.5">
+                </div>
+
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Solenoid Latency (ms)</span>
+                        <span class="control-value" id="latencyVal">80</span>
+                    </div>
+                    <input type="range" class="slider" id="latencySlider" min="20" max="300" value="80" step="10">
+                </div>
+            </div>
+
+            <div class="card" id="simulationControllerCard">
+                <div class="card-title">Simulation Controller</div>
+                <div class="control-group">
+                    <div class="control-label">
+                        <span>Weed Density Preset</span>
+                        <span class="control-value" id="densityLabel">Medium</span>
+                    </div>
+                    <select id="densitySelect" style="width:100%; padding:8px; border-radius:6px; background:#141a2e; border:1px solid var(--border-color); color:var(--text-primary); outline:none;">
+                        <option value="5">Clean Field (Low Weeds)</option>
+                        <option value="18" selected>Standard Field (Medium)</option>
+                        <option value="35">High Infestation (Dense Weeds)</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button class="btn" id="playBtn"><i class="fa-solid fa-play"></i> Start</button>
+                    <button class="btn btn-secondary" id="resetBtn"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+                </div>
+            </div>
+
+            <div class="card" id="uploadCard" style="display: none;">
+                <div class="card-title">Upload Field Image</div>
+                <label for="imageUpload" class="upload-zone" id="dropZone">
+                    <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                    <span class="upload-text">Drag & Drop or Click to Browse</span>
+                    <span class="upload-hint">Supports JPG, PNG (Max 5MB)</span>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                </label>
+                <div class="control-group" style="margin-top: 10px;">
+                    <div class="control-label">
+                        <span>Color Range Cutoff</span>
+                        <span class="control-value" id="cutoffVal">60</span>
+                    </div>
+                    <input type="range" class="slider" id="cutoffSlider" min="30" max="100" value="60" step="5">
+                </div>
+                <button class="btn" id="analyzeBtn" style="margin-top: 10px;"><i class="fa-solid fa-magnifying-glass-chart"></i> Analyze Image</button>
+            </div>
+        </aside>
+
+        <!-- CENTER PANEL: Visualization -->
+        <main class="panel" style="gap: 15px;">
+            <h2 class="panel-title" id="centerPanelTitle"><i class="fa-solid fa-eye"></i> Field Visualizer</h2>
+            
+            <!-- SIMULATOR WORKSPACE -->
+            <div class="visualizer-panel" id="simWorkspace">
+                <div class="canvas-container">
+                    <div class="scan-laser" id="laserLine"></div>
+                    <canvas id="fieldCanvas" width="800" height="600"></canvas>
+                </div>
+                
+                <div class="card" style="padding: 10px 16px;">
+                    <div class="control-label" style="margin-bottom: 4px;">
+                        <span>Nozzle Solenoid Actuator States (Real-time LED signals)</span>
+                        <span id="activeNozzlesText" style="font-weight:600; color:var(--color-spray);">0 Nozzles Open</span>
+                    </div>
+                    <div class="indicator-grid" id="indicatorGrid">
+                        <!-- Dynamically filled indicators -->
+                    </div>
+                </div>
+
+                <div class="overlay-legend">
+                    <div class="legend-item">
+                        <div class="legend-color legend-crop"></div>
+                        <span>Target Crops (Spared, Unsprayed)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-weed"></div>
+                        <span>Weed Infestations (Identified)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-spray"></div>
+                        <span>Targeted Spray Actuation</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DATA PREPARATION WORKSPACE -->
+            <div class="prep-workspace" id="prepWorkspace" style="display: none; flex-direction: column; gap: 15px; width: 100%; height: 100%;">
+                
+                <!-- STEP 1 & 2: Collect & Clean -->
+                <div class="prep-step-view" id="prepStepView1" style="display: flex; flex-direction: column; gap: 15px;">
+                    <div class="prep-intro-card">
+                        <h3>Steps 1 & 2: Dataset Collection & Quality Cleaning</h3>
+                        <p>Raw fields images contain blur, glare, and shadows. The data cleaning script automatically evaluates sharpness and exposure levels, filtering out bad quality frames that could degrade YOLOv8 training accuracy.</p>
+                    </div>
+                    
+                    <div class="prep-split-grid">
+                        <div class="prep-gallery-card">
+                            <h4 class="card-subtitle"><i class="fa-solid fa-triangle-exclamation" style="color: var(--color-weed);"></i> Rejected Raw Frames (Examples)</h4>
+                            <div class="bad-images-gallery">
+                                <div class="gallery-item rejected">
+                                    <div class="img-frame">
+                                        <div class="leaf-shadow blurry"></div>
+                                        <div class="leaf-body blurry"></div>
+                                    </div>
+                                    <span class="badge badge-error">Rejected: Blurry (Laplacian Var < 40)</span>
+                                </div>
+                                <div class="gallery-item rejected">
+                                    <div class="img-frame">
+                                        <div class="leaf-shadow overexposed"></div>
+                                        <div class="leaf-body overexposed"></div>
+                                    </div>
+                                    <span class="badge badge-error">Rejected: Lens Flare (Brightness > 230)</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="prep-gallery-card">
+                            <h4 class="card-subtitle"><i class="fa-solid fa-circle-check" style="color: var(--color-crop);"></i> Accepted Base Frames (Examples)</h4>
+                            <div class="good-images-gallery">
+                                <div class="gallery-item accepted">
+                                    <div class="img-frame sharp-mock">
+                                        <div class="leaf-shadow"></div>
+                                        <div class="leaf-body"></div>
+                                    </div>
+                                    <span class="badge badge-success">Accepted: Sharp (Laplacian Var = 145)</span>
+                                </div>
+                                <div class="gallery-item accepted">
+                                    <div class="img-frame sharp-mock-weed">
+                                        <div class="weed-shadow"></div>
+                                        <div class="weed-body"></div>
+                                    </div>
+                                    <span class="badge badge-success">Accepted: Sharp (Laplacian Var = 112)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card data-prep-summary-card">
+                        <div style="display:flex; justify-content:space-around; align-items:center; text-align:center;">
+                            <div>
+                                <div style="font-size:24px; font-weight:800; color:var(--text-secondary);">589</div>
+                                <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Raw Images Collected</div>
+                            </div>
+                            <div style="font-size:24px; color:var(--text-muted);"><i class="fa-solid fa-arrow-right-long"></i></div>
+                            <div>
+                                <div style="font-size:24px; font-weight:800; color:var(--color-weed);">-43</div>
+                                <div style="font-size:10px; color:var(--color-weed); text-transform:uppercase;">Quality Discarded</div>
+                            </div>
+                            <div style="font-size:24px; color:var(--text-muted);"><i class="fa-solid fa-arrow-right-long"></i></div>
+                            <div>
+                                <div style="font-size:24px; font-weight:800; color:var(--color-crop);">546</div>
+                                <div style="font-size:10px; color:var(--color-crop); text-transform:uppercase;">Clean Base Dataset</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- STEP 3: Image Resize -->
+                <div class="prep-step-view" id="prepStepView3" style="display: none; flex-direction: column; gap: 15px;">
+                    <div class="prep-intro-card">
+                        <h3>Step 3: High-Resolution Resizing (4000x3000 to 512x512)</h3>
+                        <p>Original high-res photos are extremely large and slow down model training. We shrink them down to a standardized size. We can interactively adjust the target resolution below to view the compression and estimated training impact.</p>
+                    </div>
+                    
+                    <div class="resize-interactive-container">
+                        <div class="resize-side">
+                            <h4 class="card-subtitle">Original Resolution</h4>
+                            <div class="img-preview-box high-res-box">
+                                <span class="res-overlay">4000 x 3000 PX</span>
+                                <div style="display:flex; flex-wrap:wrap; gap:8px; width:85%; height:85%; justify-content:center; align-items:center;">
+                                    <div class="img-frame" style="width:40px; height:40px;"><div class="leaf-shadow" style="width:20px; height:20px;"></div><div class="leaf-body" style="width:18px; height:18px;"></div></div>
+                                    <div class="img-frame" style="width:40px; height:40px;"><div class="weed-shadow" style="width:16px; height:16px;"></div><div class="weed-body" style="width:14px; height:14px;"></div></div>
+                                    <div class="img-frame" style="width:40px; height:40px;"><div class="leaf-shadow" style="width:20px; height:20px;"></div><div class="leaf-body" style="width:18px; height:18px;"></div></div>
+                                    <div class="img-frame" style="width:40px; height:40px;"><div class="weed-shadow" style="width:16px; height:16px;"></div><div class="weed-body" style="width:14px; height:14px;"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="resize-connector">
+                            <i class="fa-solid fa-arrow-right-left"></i>
+                        </div>
+                        <div class="resize-side">
+                            <h4 class="card-subtitle">Resized Model Input</h4>
+                            <div class="img-preview-box resized-box" id="resizedPreviewContainer">
+                                <span class="res-overlay" id="resizedResVal">512 x 512 PX</span>
+                                <div id="resizedPreviewField" style="display:flex; flex-wrap:wrap; gap:4px; width:64px; height:64px; justify-content:center; align-items:center; transform:scale(2.5); image-rendering:pixelated;">
+                                    <div style="width:15px; height:15px; background:#233018; display:flex; align-items:center; justify-content:center; border: 0.5px solid rgba(255,255,255,0.05);"><div style="width:8px; height:8px; background:#10b981; border-radius:50% 0 50% 0; transform:rotate(45deg);"></div></div>
+                                    <div style="width:15px; height:15px; background:#233018; display:flex; align-items:center; justify-content:center; border: 0.5px solid rgba(255,255,255,0.05);"><div style="width:6px; height:6px; background:#14785a; border-radius:50%;"></div></div>
+                                    <div style="width:15px; height:15px; background:#233018; display:flex; align-items:center; justify-content:center; border: 0.5px solid rgba(255,255,255,0.05);"><div style="width:8px; height:8px; background:#10b981; border-radius:50% 0 50% 0; transform:rotate(45deg);"></div></div>
+                                    <div style="width:15px; height:15px; background:#233018; display:flex; align-items:center; justify-content:center; border: 0.5px solid rgba(255,255,255,0.05);"><div style="width:6px; height:6px; background:#14785a; border-radius:50%;"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="control-group">
+                            <div class="control-label">
+                                <span>Target Image Size</span>
+                                <span class="control-value" id="targetSizeLabel">512 x 512</span>
+                            </div>
+                            <input type="range" class="slider" id="prepSizeSlider" min="128" max="1024" step="128" value="512">
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-top:10px;">
+                            <div class="stat-item">
+                                <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">File Size per Image</div>
+                                <div style="font-size:18px; font-weight:700; color:var(--text-primary);" id="calcFileSize">768 KB</div>
+                            </div>
+                            <div class="stat-item">
+                                <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase;">Est. Training Time (50 Epochs)</div>
+                                <div style="font-size:18px; font-weight:700; color:var(--color-crop);" id="calcTrainTime">1h 15m</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- STEP 4: Data Augmentation -->
+                <div class="prep-step-view" id="prepStepView4" style="display: none; flex-direction: column; gap: 15px;">
+                    <div class="prep-intro-card">
+                        <h3>Step 4: Interactive Keras Augmentation Generator</h3>
+                        <p>546 images are not enough for deep learning. We apply random flips, zooms, and rotations using Keras `ImageDataGenerator` settings to synthesize 1,300 unique training images, making the model robust to rotation and shifts.</p>
+                    </div>
+                    
+                    <div class="augmentation-workspace">
+                        <div class="augmentation-canvas-container">
+                            <canvas id="augCanvas" width="400" height="300"></canvas>
+                            <div class="aug-watermark">AUGMENTATION PREVIEW</div>
+                        </div>
+                        
+                        <div class="augmentation-controls">
+                            <h4 class="card-subtitle"><i class="fa-solid fa-sliders"></i> Augmentation Parameters</h4>
+                            
+                            <div class="control-group">
+                                <div class="control-label">
+                                    <span>Rotation Range</span>
+                                    <span class="control-value" id="augRotLabel">25&deg;</span>
+                                </div>
+                                <input type="range" class="slider" id="augRotSlider" min="0" max="180" value="25">
+                            </div>
+                            
+                            <div class="control-group">
+                                <div class="control-label">
+                                    <span>Zoom Range</span>
+                                    <span class="control-value" id="augZoomLabel">1.15x</span>
+                                </div>
+                                <input type="range" class="slider" id="augZoomSlider" min="1.0" max="1.8" step="0.05" value="1.15">
+                            </div>
+                            
+                            <div class="control-group">
+                                <div class="control-label">
+                                    <span>Width Shift</span>
+                                    <span class="control-value" id="augShiftXLabel">10%</span>
+                                </div>
+                                <input type="range" class="slider" id="augShiftXSlider" min="0" max="30" step="5" value="10">
+                            </div>
+                            
+                            <div class="control-group" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+                                <span style="font-size:12px; color:var(--text-secondary);">Horizontal Flip</span>
+                                <label class="switch">
+                                    <input type="checkbox" id="augFlipH" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            
+                            <button class="btn btn-secondary" id="regenAugBtn" style="margin-top:5px;"><i class="fa-solid fa-sync"></i> Re-generate Frame</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- STEP 5: Manual Labeling -->
+                <div class="prep-step-view" id="prepStepView5" style="display: none; flex-direction: column; gap: 15px;">
+                    <div class="prep-intro-card">
+                        <h3>Step 5: Bounding Box Manual Annotation Tool</h3>
+                        <p>Deep learning models require training targets. Draw bounding boxes around plants: <b>Crop / Sesame (Green)</b> and <b>Weeds (Red)</b>. Coordinates are automatically formatted in normalized YOLO `.txt` format.</p>
+                    </div>
+                    
+                    <div class="annotation-workspace">
+                        <div class="annotation-canvas-container">
+                            <canvas id="annotatorCanvas" width="400" height="300" style="cursor: crosshair;"></canvas>
+                            <div class="annotator-instructions">Click & Drag to draw boxes. Select label first.</div>
+                        </div>
+                        
+                        <div class="annotation-controls">
+                            <h4 class="card-subtitle"><i class="fa-solid fa-tag"></i> Label Selector</h4>
+                            <div class="annotation-classes">
+                                <div class="annotation-class active-crop" id="classCropBtn" onclick="selectAnnotationClass(0)">
+                                    <div class="class-color-dot crop-dot"></div>
+                                    <span>Crop (ID: 0)</span>
+                                </div>
+                                <div class="annotation-class" id="classWeedBtn" onclick="selectAnnotationClass(1)">
+                                    <div class="class-color-dot weed-dot"></div>
+                                    <span>Weed (ID: 1)</span>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; margin-top:12px;">
+                                <button class="btn btn-secondary" id="clearLabelsBtn" style="flex:1;"><i class="fa-solid fa-trash-can"></i> Clear</button>
+                                <button class="btn" id="autoLabelBtn" style="flex:1;"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Label</button>
+                            </div>
+                            
+                            <div class="annotation-output-card">
+                                <div class="card-title" style="margin-bottom:6px; font-size:11px;">YOLO Label File Output (.txt)</div>
+                                <div class="yolo-coordinates-log" id="yoloLogs"><span style="color:var(--text-muted); font-style:italic;">No boxes drawn yet...</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- RIGHT PANEL: Analytics -->
+        <section class="panel" id="simTelemetryPanel" aria-label="System Telemetry Panel">
+            <h2 class="panel-title"><i class="fa-solid fa-chart-simple"></i> Analytics & Live Telemetry</h2>
+            
+            <div class="card">
+                <div class="card-title" style="text-align: center;">Pesticide Savings Gauge</div>
+                <div class="savings-circle-container">
+                    <div class="savings-circle" id="savingsCircle" style="--savings-percent: 85%;">
+                        <div class="savings-content">
+                            <span class="savings-value" id="savingsValue">85.4%</span>
+                            <div class="savings-label">Saved</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Spraying Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="control-label" style="justify-content: center; font-size:11px;">Crops Protected</div>
+                        <div class="stat-value crop-val" id="statCrops">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="control-label" style="justify-content: center; font-size:11px;">Weeds Targeted</div>
+                        <div class="stat-value weed-val" id="statWeeds">0</div>
+                    </div>
+                    <div class="stat-item" style="grid-column: span 2;">
+                        <div class="control-label" style="justify-content: center; font-size:11px;">Chemicals Applied (Liters Saved)</div>
+                        <div class="stat-value saved-val" id="statVolume">0.00 L</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="background: rgba(16, 185, 129, 0.03); border: 1px solid var(--border-color-glow);">
+                <div class="card-title" style="color: var(--color-crop); font-weight:700;"><i class="fa-solid fa-shield-halved"></i> Food Safety Impact</div>
+                <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
+                    Selective spraying operates on a **zero-contact** policy for crops. By identifying leaf geometries, the ECU stops chemical release over food-producing crop leaves.
+                </p>
+                <div style="margin-top: 10px; font-size: 11px; color: var(--text-muted);">
+                    <i class="fa-solid fa-check" style="color: var(--color-crop); margin-right: 4px;"></i> Prevents pesticide contamination on crops.<br>
+                    <i class="fa-solid fa-check" style="color: var(--color-crop); margin-right: 4px;"></i> Reduces pesticide run-off in soil by up to 88%.
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: Analytics / Dataset Stats -->
+        <section class="panel" id="prepTelemetryPanel" aria-label="Dataset Telemetry Panel" style="display: none;">
+            <h2 class="panel-title"><i class="fa-solid fa-database"></i> Dataset Telemetry</h2>
+            
+            <div class="card">
+                <div class="card-title">Dataset Scaling Summary</div>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Initial Raw Photos</span>
+                        <span style="font-size:13px; font-weight:600;">589</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Quality Cleaned</span>
+                        <span style="font-size:13px; font-weight:600; color:var(--color-crop);">546</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Resized Dimension</span>
+                        <span style="font-size:13px; font-weight:600; color:var(--color-accent);" id="rightPanelRes">512 x 512</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--border-color); padding-bottom:6px;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Augmentation Factor</span>
+                        <span style="font-size:13px; font-weight:600; color:var(--color-spray);" id="rightPanelAugFactor">2.4x</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Total Generated Samples</span>
+                        <span style="font-size:14px; font-weight:700; color:var(--color-crop);" id="rightPanelTotalSamples">1,300</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">ImageDataGenerator Config</div>
+                <pre class="code-block-display" id="kerasCodeSnippet">from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+datagen = ImageDataGenerator(
+    rotation_range=25,
+    width_shift_range=0.10,
+    height_shift_range=0.10,
+    zoom_range=0.15,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)</pre>
+            </div>
+            
+            <div class="card" style="background: rgba(6, 182, 212, 0.03); border: 1px solid var(--border-color-glow);">
+                <div class="card-title" style="color: var(--color-accent); font-weight:700;"><i class="fa-solid fa-code"></i> YOLO v8 Formatting</div>
+                <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.5; margin-bottom:6px;">
+                    Bounding boxes must be stored in standardized text format mapping to image coordinates.
+                </p>
+                <div style="font-size: 10px; color: var(--text-muted); line-height:1.4;">
+                    <code>[class_id] [x_center] [y_center] [width] [height]</code>
+                    <ul style="padding-left:12px; margin-top:4px;">
+                        <li>All values are normalized [0.0 - 1.0] relative to image width and height.</li>
+                        <li><b>0:</b> Sesame (target crop)</li>
+                        <li><b>1:</b> Weed (target spray zone)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER / BOTTOM PANEL: Hardware Flowchart -->
+        <footer class="panel footer-row">
+            <h2 class="panel-title"><i class="fa-solid fa-diagram-project"></i> How It Works: Smart Spraying Loop</h2>
+            <div class="flowchart">
+                <div class="flow-step">
+                    <div class="flow-icon"><i class="fa-solid fa-camera"></i></div>
+                    <div class="flow-name">1. Scan & Capture</div>
+                    <div class="flow-desc">RGB sensors capture high-speed downward feed.</div>
+                </div>
+                <div class="flow-arrow"><i class="fa-solid fa-angles-right"></i></div>
+                <div class="flow-step">
+                    <div class="flow-icon"><i class="fa-solid fa-brain"></i></div>
+                    <div class="flow-name">2. Detect (HSV & Shape)</div>
+                    <div class="flow-desc">ECU segments green shapes, separating crops from weeds.</div>
+                </div>
+                <div class="flow-arrow"><i class="fa-solid fa-angles-right"></i></div>
+                <div class="flow-step">
+                    <div class="flow-icon"><i class="fa-solid fa-microchip"></i></div>
+                    <div class="flow-name">3. Time & Delay</div>
+                    <div class="flow-desc">Calculates speed delay to spray exactly as weed hits boom.</div>
+                </div>
+                <div class="flow-arrow"><i class="fa-solid fa-angles-right"></i></div>
+                <div class="flow-step">
+                    <div class="flow-icon"><i class="fa-solid fa-bolt"></i></div>
+                    <div class="flow-name">4. Solenoid Actuate</div>
+                    <div class="flow-desc">Triggers 12V valve to open specific nozzle channel.</div>
+                </div>
+                <div class="flow-arrow"><i class="fa-solid fa-angles-right"></i></div>
+                <div class="flow-step">
+                    <div class="flow-icon"><i class="fa-solid fa-shower"></i></div>
+                    <div class="flow-name">5. Spray Target</div>
+                    <div class="flow-desc">Nozzles mist weed, leaving nearby crop dry.</div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
